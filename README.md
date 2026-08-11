@@ -64,7 +64,7 @@ uv run pea-app
 
 ## macOS preview bundle
 
-The `v0.16.1` pre-release includes an Apple-silicon ZIP bundle for evaluation. It is ad-hoc signed,
+The `v0.16.2` pre-release includes an Apple-silicon ZIP bundle for evaluation. It is ad-hoc signed,
 not Developer-ID signed or notarised. macOS may therefore prevent it from opening. Do not disable
 or bypass macOS security controls; use the source installation if the bundle is not accepted.
 

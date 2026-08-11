@@ -19,6 +19,10 @@ def _explanation(step: str) -> str:
         "Sources": "Load the records and manual context that belong to this period.",
         "Week and model": "Confirm the ISO week and the required quality profile.",
         "File": "Review duplicates before creating the DEVONthink record.",
+        "API key": "Save the OpenAI API key in macOS Keychain.",
+        "Authorisations": "Complete the required local and source-system authorisations.",
+        "Health check": "Run the complete content-free connection and capability check.",
+        "Usage and logs": "Review local API usage statistics and privacy-safe runtime logs.",
     }
     return descriptions.get(step, f"Complete the {step.lower()} stage before continuing.")
 
@@ -52,6 +56,7 @@ class WorkflowGuide(QFrame):
         layout.addItem(self._top_spacer)
         self._step_frames: list[QFrame] = []
         self._step_titles: list[QLabel] = []
+        self._step_details: list[QLabel] = []
         for index, step in enumerate(self._steps):
             frame = QFrame()
             frame.setObjectName("guideStep")
@@ -69,6 +74,7 @@ class WorkflowGuide(QFrame):
             layout.addWidget(frame)
             self._step_frames.append(frame)
             self._step_titles.append(title)
+            self._step_details.append(detail)
         layout.addStretch()
         self.set_step(0, next_action)
 
@@ -97,13 +103,17 @@ class WorkflowGuide(QFrame):
             if index < self._current_step:
                 state = "complete"
                 marker = "●"
+                detail = f"{self._steps[index]} completed."
             elif index == self._current_step and self._current_step < maximum:
                 state = "current"
                 marker = "●"
+                detail = _explanation(self._steps[index])
             else:
                 state = "pending"
                 marker = "○"
+                detail = "Available after the preceding stage."
             self._step_titles[index].setText(f"{marker}  {index + 1}. {self._steps[index]}")
+            self._step_details[index].setText(detail)
             frame.setProperty("stepState", state)
             frame.style().unpolish(frame)
             frame.style().polish(frame)

@@ -1,6 +1,6 @@
 [project]
 name = "personal-executive-assistant-app"
-version = "0.16.1"
+version = "0.16.2"
 description = "Standalone local Personal Executive Assistant application"
 readme = "README.md"
 license = "MIT"

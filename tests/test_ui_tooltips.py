@@ -106,6 +106,21 @@ def test_guidance_is_permanent_in_the_right_hand_rail() -> None:
     window.close()
 
 
+def test_completed_guidance_steps_do_not_keep_action_instructions() -> None:
+    window = _window()
+    guide = window._workflow_guides["settings"]
+
+    guide.set_step(3, "Review usage statistics and privacy-safe logs")
+
+    assert guide._step_details[0].text() == "API key completed."
+    assert guide._step_details[1].text() == "Authorisations completed."
+    assert guide._step_details[2].text() == "Health check completed."
+    assert guide._step_details[3].text() == (
+        "Review local API usage statistics and privacy-safe runtime logs."
+    )
+    window.close()
+
+
 def test_regeneration_is_enabled_only_after_a_preview_exists() -> None:
     window = _window()
 
