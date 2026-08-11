@@ -9,12 +9,25 @@ from typing import Any
 from PySide6.QtCore import QSettings
 
 from pea_app.diagnostics import (
+    HealthResult,
     HealthService,
     UsageTracker,
     configure_runtime_logging,
+    health_check_is_complete,
     log_event,
     read_log_tail,
 )
+
+
+def test_startup_health_requires_every_component_to_be_ok() -> None:
+    assert health_check_is_complete([HealthResult("OpenAI API", "OK", "ready")])
+    assert not health_check_is_complete([])
+    assert not health_check_is_complete(
+        [
+            HealthResult("OpenAI API", "OK", "ready"),
+            HealthResult("PLAUD", "Attention", "sign-in required"),
+        ]
+    )
 
 
 def test_usage_tracker_persists_aggregate_tokens(tmp_path: Path) -> None:

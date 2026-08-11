@@ -1,3 +1,3 @@
 """Standalone local Personal Executive Assistant application."""
 
-__version__ = "0.16.0"
+__version__ = "0.16.1"

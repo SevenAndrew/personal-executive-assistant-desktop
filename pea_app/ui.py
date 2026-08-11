@@ -18,6 +18,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QAction,
+    QCloseEvent,
     QColor,
     QDesktopServices,
     QGuiApplication,
@@ -71,10 +72,12 @@ from .devonthink_handoff import (
 from .diagnostics import (
     BILLING_URL,
     LOG_DIRECTORY,
+    STARTUP_HEALTH_VERSION,
     USAGE_DASHBOARD_URL,
     HealthResult,
     HealthService,
     UsageTracker,
+    health_check_is_complete,
     log_event,
     read_log_tail,
 )
@@ -662,6 +665,9 @@ class MainWindow(QMainWindow):
         )
         self._health_thread: QThread | None = None
         self._health_worker: HealthWorker | None = None
+        self._startup_health_pending = False
+        self._health_check_is_startup = False
+        self._close_after_health = False
         self._weekly_thread: QThread | None = None
         self._weekly_worker: WeeklyGenerationWorker | None = None
         self._minutes_archive_thread: QThread | None = None
@@ -867,6 +873,14 @@ class MainWindow(QMainWindow):
             guide.set_step(step, next_action)
             self._sync_guidance_position()
 
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._health_thread is not None and self._health_thread.isRunning():
+            self._close_after_health = True
+            self.hide()
+            event.ignore()
+            return
+        super().closeEvent(event)
+
     @Slot()
     def _show_help(self) -> None:
         if self._help_dialog is None:
@@ -894,11 +908,30 @@ class MainWindow(QMainWindow):
         if not self._settings.value("setup/assistant_seen", False, type=bool):
             self._show_setup_assistant()
 
+    @Slot()
+    def run_startup_checks(self) -> None:
+        """Verify this Mac on every launch until all required checks have passed."""
+        if self._settings.value("health/startup_version", "") == STARTUP_HEALTH_VERSION:
+            return
+        self._startup_health_pending = True
+        if not self._settings.value("setup/assistant_seen", False, type=bool):
+            self._show_setup_assistant()
+            return
+        self._run_startup_health_check()
+
+    def _run_startup_health_check(self) -> None:
+        if not self._startup_health_pending or self._health_thread is not None:
+            return
+        self._health_check_is_startup = True
+        self._run_health_check()
+
     @Slot(int)
     def _setup_dialog_closed(self, _result: int) -> None:
         if self._setup_dialog is not None:
             self._setup_dialog.deleteLater()
         self._setup_dialog = None
+        if self._startup_health_pending:
+            QTimer.singleShot(0, self._run_startup_health_check)
 
     @Slot(str)
     def _handle_setup_configuration(self, target: str) -> None:
@@ -2150,7 +2183,8 @@ class MainWindow(QMainWindow):
         health_layout.addWidget(QLabel("System health"))
         health_note = QLabel(
             "Checks connection and advertised capabilities without reading application content or "
-            "running an OpenAI inference."
+            "running an OpenAI inference. Until every required check reports OK, this full check "
+            "runs again automatically at each application start."
         )
         health_note.setObjectName("pageSub")
         health_note.setWordWrap(True)
@@ -2487,6 +2521,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "API key not saved", str(exc))
             return
         log_event("openai_key_stored")
+        self._settings.remove("health/startup_version")
+        self._settings.sync()
         self._refresh_key_status()
         QMessageBox.information(self, "OpenAI API key", "The key was stored securely.")
 
@@ -2565,6 +2601,12 @@ class MainWindow(QMainWindow):
         ok_count = sum(item.status == "OK" for item in result)
         attention_count = sum(item.status == "Attention" for item in result)
         unavailable_count = sum(item.status == "Unavailable" for item in result)
+        complete = health_check_is_complete(result)
+        if complete:
+            self._settings.setValue("health/startup_version", STARTUP_HEALTH_VERSION)
+        else:
+            self._settings.remove("health/startup_version")
+        self._settings.sync()
         self._health_status.setText(
             f"Health check complete: {ok_count} OK, {attention_count} attention, "
             f"{unavailable_count} unavailable."
@@ -2577,16 +2619,45 @@ class MainWindow(QMainWindow):
             unavailable=unavailable_count,
         )
         self._refresh_runtime_log()
+        if self._health_check_is_startup and not complete and not self._close_after_health:
+            unresolved = ", ".join(
+                f"{item.component} ({item.status})"
+                for item in result
+                if item.status != "OK"
+            )
+            self._navigation.setCurrentRow(6)
+            QMessageBox.warning(
+                self,
+                "System setup is not complete",
+                "PEA still requires attention on this Mac:\n\n"
+                f"{unresolved}\n\n"
+                "The full System health check will run again at every application start until "
+                "all required components report OK. Review the details in Settings → Connections.",
+            )
 
     @Slot(str)
     def _health_failed(self, message: str) -> None:
+        self._settings.remove("health/startup_version")
+        self._settings.sync()
         self._health_status.setText(message)
+        if self._health_check_is_startup and not self._close_after_health:
+            self._navigation.setCurrentRow(6)
+            QMessageBox.warning(
+                self,
+                "System health check incomplete",
+                f"{message}\n\nThe check will run again at the next application start.",
+            )
 
     @Slot()
     def _health_finished(self) -> None:
         self._health_thread = None
         self._health_worker = None
         self._health_button.setEnabled(True)
+        self._startup_health_pending = False
+        self._health_check_is_startup = False
+        if self._close_after_health:
+            self._close_after_health = False
+            QTimer.singleShot(0, self.close)
 
     @Slot()
     def _refresh_usage_statistics(self) -> None:

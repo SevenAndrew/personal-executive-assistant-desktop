@@ -27,7 +27,7 @@ HELP_TOPICS = (
           <li>Complete the <b>First-run setup</b> check. Each missing dependency is installed only
           after you approve its exact source, command and destination.</li>
           <li>Complete the required API-key, OAuth and macOS application authorisations.</li>
-          <li>Run <b>System health</b>.</li>
+          <li>Allow the automatic <b>System health</b> check to verify every required component.</li>
           <li>Select the page for the source or workflow you want to use.</li>
           <li>Review every preview before confirming a write.</li>
         </ol>
@@ -53,7 +53,9 @@ HELP_TOPICS = (
           <li>API keys, OAuth sign-ins and macOS permissions remain manual.</li>
         </ul>
         <p>Open it again at any time from <b>Help → Setup assistant</b> or
-        <b>Settings → Connections</b>. Run <b>System health</b> after completing authorisation.</p>
+        <b>Settings → Connections</b>. PEA automatically runs the complete System health check at
+        every application start until all required components report <b>OK</b>. Closing the
+        assistant or saving only the API key does not complete setup.</p>
         """,
     ),
     (

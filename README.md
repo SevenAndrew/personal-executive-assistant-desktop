@@ -47,6 +47,9 @@ PEA's first-run assistant checks local dependencies without reading connected-ap
 It presents each supported installation separately and runs it only after the user approves the
 exact source, command and destination. Homebrew, API keys, OAuth sign-ins and macOS permissions are
 never configured without the user.
+The complete content-free System health check then runs automatically at every application start
+until every required dependency, authorisation and advertised capability reports **OK**. Closing
+the assistant or configuring only the API key does not mark setup as complete.
 
 ## Install from source
 
@@ -61,7 +64,7 @@ uv run pea-app
 
 ## macOS preview bundle
 
-The `v0.16.0` pre-release includes an Apple-silicon ZIP bundle for evaluation. It is ad-hoc signed,
+The `v0.16.1` pre-release includes an Apple-silicon ZIP bundle for evaluation. It is ad-hoc signed,
 not Developer-ID signed or notarised. macOS may therefore prevent it from opening. Do not disable
 or bypass macOS security controls; use the source installation if the bundle is not accepted.
 
