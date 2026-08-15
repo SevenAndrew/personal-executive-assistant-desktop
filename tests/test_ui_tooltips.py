@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
 from pea_app import __version__
 from pea_app.agenda_mcp import AgendaNote, AgendaNoteSummary
 from pea_app.devonthink_handoff import DevonThinkMinutesSource
+from pea_app.diagnostics import STARTUP_HEALTH_VERSION, HealthResult
 from pea_app.guidance import WorkflowGuide
 from pea_app.plaud_cli import (
     PlaudRecording,
@@ -101,6 +103,21 @@ def test_guidance_is_permanent_in_the_right_hand_rail() -> None:
     sidebar_text = " ".join(label.text() for label in sidebar.findChildren(QLabel))
     assert "Controlled mode" not in sidebar_text
     assert "SevenAndrew" not in sidebar_text
+    window.close()
+
+
+def test_completed_guidance_steps_do_not_keep_action_instructions() -> None:
+    window = _window()
+    guide = window._workflow_guides["settings"]
+
+    guide.set_step(3, "Review usage statistics and privacy-safe logs")
+
+    assert guide._step_details[0].text() == "API key completed."
+    assert guide._step_details[1].text() == "Authorisations completed."
+    assert guide._step_details[2].text() == "Health check completed."
+    assert guide._step_details[3].text() == (
+        "Review local API usage statistics and privacy-safe runtime logs."
+    )
     window.close()
 
 
@@ -271,6 +288,54 @@ def test_startup_resets_all_model_profiles_to_economy() -> None:
     assert window._model_combo.currentData().key == "economy"
     assert window._weekly_model_combo.currentData().key == "economy"
     assert window._workflow_model.currentData().key == "economy"
+    window.close()
+
+
+def test_startup_health_repeats_until_a_complete_result(monkeypatch) -> None:
+    window = _window()
+    window._settings.setValue("setup/assistant_seen", True)
+    starts: list[bool] = []
+    monkeypatch.setattr(window, "_run_startup_health_check", lambda: starts.append(True))
+
+    window.run_startup_checks()
+    window.run_startup_checks()
+
+    assert starts == [True, True]
+    window.close()
+
+
+def test_complete_health_result_suppresses_future_startup_check(monkeypatch) -> None:
+    window = _window()
+    window._settings.setValue("setup/assistant_seen", True)
+    window._health_completed([HealthResult("Required component", "OK", "ready")])
+    starts: list[bool] = []
+    monkeypatch.setattr(window, "_run_startup_health_check", lambda: starts.append(True))
+
+    window.run_startup_checks()
+
+    assert window._settings.value("health/startup_version") == STARTUP_HEALTH_VERSION
+    assert starts == []
+    window.close()
+
+
+def test_incomplete_startup_health_names_component_and_remains_pending(monkeypatch) -> None:
+    window = _window()
+    warnings: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    window._health_check_is_startup = True
+
+    window._health_completed(
+        [HealthResult("PLAUD", "Attention", "sign-in required")]
+    )
+
+    assert window._settings.value("health/startup_version") is None
+    assert warnings
+    assert "PLAUD (Attention)" in warnings[0][1]
+    assert window._navigation.currentRow() == 6
     window.close()
 
 

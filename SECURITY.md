@@ -29,6 +29,10 @@ command or steps. API-key entry, OAuth sign-in and macOS application permissions
 The bundled OmniFocus adapter is copied to a private per-user directory with restrictive
 permissions and exposes only two read-only tools: aggregate status and bounded task metadata.
 System health is the post-authorisation verification boundary.
+The complete content-free health check runs automatically at every application start until every
+required component reports `OK`. Closing the setup assistant or saving only the API key does not
+set the local completion marker. Failed and partial results remain unresolved and are checked again
+at the next start; a complete result is stored locally for the current health-check version.
 
 ## Content boundary
 

@@ -19,7 +19,7 @@ def main() -> int:
     application.setOrganizationName("PEA")
     window = MainWindow()
     window.show()
-    QTimer.singleShot(500, window.show_setup_assistant_if_first_run)
+    QTimer.singleShot(500, window.run_startup_checks)
     return application.exec()
 
 

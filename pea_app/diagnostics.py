@@ -27,6 +27,7 @@ LOG_DIRECTORY = Path.home() / "Library" / "Logs" / "personal-executive-assistant
 LOG_PATH = LOG_DIRECTORY / "runtime.log"
 USAGE_DASHBOARD_URL = "https://platform.openai.com/usage"
 BILLING_URL = "https://platform.openai.com/settings/organization/billing/overview"
+STARTUP_HEALTH_VERSION = "1"
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,11 @@ class HealthResult:
     component: str
     status: str
     detail: str
+
+
+def health_check_is_complete(results: list[HealthResult]) -> bool:
+    """Return true only when every required startup check reports OK."""
+    return bool(results) and all(result.status == "OK" for result in results)
 
 
 class HealthService:
